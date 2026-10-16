@@ -389,6 +389,186 @@ exports.addTrackingCheckpoint = async (req, res) => {
   }
 };
 
+exports.updateOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      lr_number,
+      booking_date,
+      booking_time,
+      sender_name,
+      sender_phone,
+      sender_address,
+      receiver_name,
+      receiver_phone,
+      receiver_address,
+      from_station,
+      to_station,
+      pieces,
+      weight_kg,
+      description,
+      payment_mode,
+      payment_status,
+      payment_method,
+      freight_amount,
+      other_charges,
+      delivery_status,
+      driver_id,
+      remarks
+    } = req.body;
+
+    const [existing] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+    const currentOrder = existing[0];
+
+    if (!sender_name || !receiver_name || !from_station || !to_station) {
+      return res.status(400).json({
+        success: false,
+        message: 'Sender Name, Receiver Name, From Station, and To Station are required.'
+      });
+    }
+
+    if (sender_phone && sender_phone.toString().replace(/\D/g, '').length !== 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Sender phone number must be exactly 10 digits.'
+      });
+    }
+
+    if (receiver_phone && receiver_phone.toString().replace(/\D/g, '').length !== 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Receiver phone number must be exactly 10 digits.'
+      });
+    }
+
+    // Check LR duplication if LR number changed
+    let updatedLr = (lr_number || currentOrder.lr_number).toString().trim();
+    if (updatedLr !== currentOrder.lr_number) {
+      const [dup] = await pool.query('SELECT id FROM orders WHERE lr_number = ? AND id != ?', [updatedLr, id]);
+      if (dup.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `LR / Way Bill Number "${updatedLr}" already exists on another order.`
+        });
+      }
+    }
+
+    const freight = freight_amount !== undefined ? parseFloat(freight_amount) : parseFloat(currentOrder.freight_amount);
+    const others = other_charges !== undefined ? parseFloat(other_charges) : parseFloat(currentOrder.other_charges);
+    const total = (isNaN(freight) ? 0 : freight) + (isNaN(others) ? 0 : others);
+
+    const newPaymentStatus = payment_status || currentOrder.payment_status;
+    const newPaymentMode = payment_mode || currentOrder.payment_mode;
+    const newDeliveryStatus = delivery_status || currentOrder.delivery_status;
+
+    let amount_paid = currentOrder.amount_paid;
+    if (newPaymentStatus === 'PAID') {
+      amount_paid = total;
+    } else if (newPaymentStatus === 'UNPAID') {
+      amount_paid = 0;
+    }
+
+    let delivery_date = currentOrder.delivery_date;
+    if (newDeliveryStatus === 'DELIVERED' && !delivery_date) {
+      delivery_date = new Date();
+    }
+
+    const formattedBookingDate = booking_date 
+      ? new Date(booking_date).toISOString().split('T')[0]
+      : currentOrder.booking_date;
+
+    await pool.query(
+      `UPDATE orders SET
+        lr_number = ?,
+        booking_date = ?,
+        booking_time = COALESCE(?, booking_time),
+        sender_name = ?,
+        sender_phone = ?,
+        sender_address = ?,
+        receiver_name = ?,
+        receiver_phone = ?,
+        receiver_address = ?,
+        from_station = ?,
+        to_station = ?,
+        pieces = ?,
+        weight_kg = ?,
+        description = ?,
+        payment_mode = ?,
+        payment_status = ?,
+        payment_method = ?,
+        freight_amount = ?,
+        other_charges = ?,
+        total_amount = ?,
+        amount_paid = ?,
+        delivery_status = ?,
+        delivery_date = ?,
+        driver_id = ?,
+        remarks = ?
+      WHERE id = ?`,
+      [
+        updatedLr,
+        formattedBookingDate,
+        booking_time || null,
+        sender_name.trim(),
+        sender_phone ? sender_phone.toString().trim() : null,
+        sender_address || null,
+        receiver_name.trim(),
+        receiver_phone ? receiver_phone.toString().trim() : null,
+        receiver_address || null,
+        from_station,
+        to_station,
+        parseInt(pieces, 10) || 1,
+        parseFloat(weight_kg) || 0,
+        (description || 'Goods').trim(),
+        newPaymentMode,
+        newPaymentStatus,
+        payment_method || currentOrder.payment_method || 'CASH',
+        freight,
+        others,
+        total,
+        amount_paid,
+        newDeliveryStatus,
+        delivery_date,
+        driver_id ? parseInt(driver_id, 10) : null,
+        remarks || null,
+        id
+      ]
+    );
+
+    // If status changed, log in tracking history
+    if (newDeliveryStatus !== currentOrder.delivery_status) {
+      const loc = newDeliveryStatus === 'DELIVERED' ? to_station : from_station;
+      await pool.query(
+        `INSERT INTO tracking_history (order_id, status, location, note) VALUES (?, ?, ?, ?)`,
+        [id, newDeliveryStatus, loc, `Status updated to ${newDeliveryStatus} via Order Edit.`]
+      );
+    }
+
+    const [updated] = await pool.query(
+      `SELECT o.*, 
+        d.name as driver_name, 
+        d.vehicle_no as driver_vehicle,
+        d.phone as driver_phone
+       FROM orders o
+       LEFT JOIN drivers d ON o.driver_id = d.id
+       WHERE o.id = ?`,
+      [id]
+    );
+
+    return res.json({
+      success: true,
+      message: `Order LR #${updatedLr} updated successfully!`,
+      order: updated[0]
+    });
+  } catch (err) {
+    console.error('Update order error:', err);
+    return res.status(500).json({ success: false, message: 'Server error updating order', error: err.message });
+  }
+};
+
 exports.deleteOrder = async (req, res) => {
   try {
     const { id } = req.params;

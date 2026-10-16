@@ -8,6 +8,7 @@ router.use(authMiddleware);
 router.get('/', orderController.getOrders);
 router.post('/', orderController.createOrder);
 router.get('/:id', orderController.getOrderById);
+router.put('/:id', orderController.updateOrder); // Full order edit route
 router.patch('/:id/payment', orderController.updatePayment); // In-place payment update on order table/page!
 router.patch('/:id/status', orderController.updateDeliveryStatus);
 router.post('/:id/checkpoint', orderController.addTrackingCheckpoint);
