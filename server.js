@@ -5,6 +5,7 @@ const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const pool = require('./config/db');
+const initializeDatabase = require('./database/init_db');
 const authRoutes = require('./routes/authRoutes');
 const driverRoutes = require('./routes/driverRoutes');
 const orderRoutes = require('./routes/orderRoutes');
@@ -19,12 +20,14 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve unified frontend (Vite production build)
+// Serve unified frontend (Vite production build if present locally)
 const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
 const frontendStaticPath = path.join(__dirname, '..', 'frontend');
 const staticPath = fs.existsSync(frontendDistPath) ? frontendDistPath : frontendStaticPath;
 
-app.use(express.static(staticPath));
+if (fs.existsSync(staticPath)) {
+  app.use(express.static(staticPath));
+}
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -43,21 +46,51 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// App routing fallback for SPA
-app.get('*', (req, res) => {
-  const indexPath = path.join(staticPath, 'index.html');
-  if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
-    res.sendFile(path.join(frontendStaticPath, 'index.html'));
+// Explicit Database Initialization / Verification Endpoint
+app.get('/api/init-db', async (req, res) => {
+  try {
+    await initializeDatabase();
+    res.json({
+      success: true,
+      message: 'Database schema verified and initial admin/branches ensured successfully'
+    });
+  } catch (err) {
+    console.error('Manual DB Init Error:', err);
+    res.status(500).json({ success: false, message: 'DB Init error', error: err.message });
   }
 });
 
-// Start Server
+// App routing fallback for SPA or API info
+app.get('*', (req, res) => {
+  const indexPath = path.join(staticPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  return res.json({
+    status: 'ok',
+    service: 'ES TRANSPORTERS / IGR QUICK PARCEL SERVICE BACKEND API',
+    endpoints: {
+      health: '/api/health',
+      initDb: '/api/init-db',
+      auth: '/api/auth/login',
+      branches: '/api/public/branches',
+      track: '/api/public/track/:lrNumber'
+    }
+  });
+});
+
+// Start Server & Auto-init Database
 app.listen(PORT, async () => {
   console.log(`=======================================================`);
   console.log(`🚀 ES TRANSPORTERS / IGR QUICK PARCEL SERVICE`);
-  console.log(`🌐 React Vite Web App running at: http://localhost:${PORT}`);
+  console.log(`🌐 Server running at: http://localhost:${PORT}`);
   console.log(`📦 Head Office: Karaikal | Branch Office: Pondicherry`);
   console.log(`=======================================================`);
+
+  try {
+    await initializeDatabase();
+    console.log('✅ Startup database check & seed completed successfully.');
+  } catch (err) {
+    console.error('⚠️ Startup database initialization failed:', err.message);
+  }
 });
