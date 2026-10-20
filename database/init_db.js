@@ -162,58 +162,6 @@ async function initializeDatabase() {
 
   console.log('✅ All 7 database tables created / verified successfully!');
 
-  // Seed default fleet vehicles (if not exists)
-  const [existingVehicles] = await pool.query('SELECT COUNT(*) as count FROM vehicles');
-  if (existingVehicles[0].count === 0) {
-    const defaultVehicles = [
-      {
-        vehicle_no: 'PY 02 C 5678',
-        vehicle_type: 'Ashok Leyland Dost',
-        model_name: 'Dost Strong (BS6)',
-        capacity: '2.5 Ton',
-        driver_name: 'Agal',
-        driver_phone: '9876543210',
-        owner_name: 'ES Transporters',
-        ownership_type: 'OWN',
-        assigned_route: 'Karaikal - Pondicherry',
-        status: 'active'
-      },
-      {
-        vehicle_no: 'TN 49 AB 1234',
-        vehicle_type: 'Tata 407 Lorry',
-        model_name: 'Tata 407 Gold SFC',
-        capacity: '4.5 Ton',
-        driver_name: 'Mathavan',
-        driver_phone: '9360427527',
-        owner_name: 'ES Transporters',
-        ownership_type: 'OWN',
-        assigned_route: 'Karaikal - Nagapattinam',
-        status: 'active'
-      },
-      {
-        vehicle_no: 'TN 51 Q 9081',
-        vehicle_type: 'Eicher 14ft Container',
-        model_name: 'Eicher Pro 2049',
-        capacity: '5.0 Ton',
-        driver_name: 'Senthil Kumar',
-        driver_phone: '9655566060',
-        owner_name: 'Attached Partner',
-        ownership_type: 'ATTACHED',
-        assigned_route: 'Pondicherry - Cuddalore',
-        status: 'active'
-      }
-    ];
-
-    for (const v of defaultVehicles) {
-      await pool.query(
-        `INSERT INTO vehicles (vehicle_no, vehicle_type, model_name, capacity, driver_name, driver_phone, owner_name, ownership_type, assigned_route, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [v.vehicle_no, v.vehicle_type, v.model_name, v.capacity, v.driver_name, v.driver_phone, v.owner_name, v.ownership_type, v.assigned_route, v.status]
-      );
-    }
-    console.log('🚛 Default fleet vehicles registered successfully!');
-  }
-
   // Seed default Admin login account only (if not exists)
   const [existingUser] = await pool.query('SELECT id FROM users WHERE username = ?', ['admin']);
   if (existingUser.length === 0) {
@@ -253,7 +201,7 @@ async function initializeDatabase() {
     console.log('📍 12 Branches registered successfully!');
   }
 
-  console.log('✨ Table creation complete without any dummy orders or drivers.');
+  console.log('✨ Table creation complete without any dummy orders, vehicles, or drivers.');
 }
 
 if (require.main === module) {
