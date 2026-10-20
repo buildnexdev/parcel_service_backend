@@ -19,13 +19,17 @@ exports.login = async (req, res) => {
     }
 
     const user = users[0];
+    if (user.status === 'inactive') {
+      return res.status(403).json({ success: false, message: 'Your account is deactivated. Please contact the administrator.' });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Invalid password. Please check your credentials.' });
     }
 
     const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role, name: user.name, branch: user.branch },
+      { id: user.id, username: user.username, role: user.role, name: user.name, branch: user.branch, designation: user.designation || 'Staff' },
       process.env.JWT_SECRET || 'es_transporters_jwt_secret_2026_super_secure_key',
       { expiresIn: '7d' }
     );
@@ -37,7 +41,9 @@ exports.login = async (req, res) => {
       email: user.email,
       phone: user.phone,
       role: user.role,
-      branch: user.branch
+      designation: user.designation || 'Staff',
+      branch: user.branch,
+      status: user.status || 'active'
     };
 
     return res.json({
@@ -54,7 +60,7 @@ exports.login = async (req, res) => {
 
 exports.getProfile = async (req, res) => {
   try {
-    const [users] = await pool.query('SELECT id, name, username, email, phone, role, branch, created_at FROM users WHERE id = ?', [req.user.id]);
+    const [users] = await pool.query('SELECT id, name, username, email, phone, role, designation, branch, status, created_at FROM users WHERE id = ?', [req.user.id]);
     if (users.length === 0) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }

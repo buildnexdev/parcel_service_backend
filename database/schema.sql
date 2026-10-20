@@ -19,7 +19,9 @@ CREATE TABLE IF NOT EXISTS users (
   phone VARCHAR(20),
   password VARCHAR(255) NOT NULL,
   role ENUM('admin', 'staff') DEFAULT 'admin',
+  designation VARCHAR(100) DEFAULT 'Staff',
   branch VARCHAR(100) DEFAULT 'Karaikal',
+  status ENUM('active', 'inactive') DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

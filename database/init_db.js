@@ -14,11 +14,27 @@ async function initializeDatabase() {
       phone VARCHAR(20),
       password VARCHAR(255) NOT NULL,
       role ENUM('admin', 'staff') DEFAULT 'admin',
+      designation VARCHAR(100) DEFAULT 'Staff',
       branch VARCHAR(100) DEFAULT 'Karaikal',
+      status ENUM('active', 'inactive') DEFAULT 'active',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
+
+  // Ensure users table has designation and status columns
+  try {
+    const [uCols] = await pool.query('SHOW COLUMNS FROM users');
+    const existingUCols = uCols.map(c => c.Field);
+    if (!existingUCols.includes('designation')) {
+      await pool.query("ALTER TABLE users ADD COLUMN designation VARCHAR(100) DEFAULT 'Staff' AFTER role");
+    }
+    if (!existingUCols.includes('status')) {
+      await pool.query("ALTER TABLE users ADD COLUMN status ENUM('active', 'inactive') DEFAULT 'active' AFTER branch");
+    }
+  } catch (err) {
+    console.warn('Note on users columns check:', err.message);
+  }
 
   // 2. Branches table
   await pool.query(`
