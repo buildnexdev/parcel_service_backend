@@ -50,6 +50,28 @@ async function initializeDatabase() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
 
+  // 3b. Vehicles table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS vehicles (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      vehicle_no VARCHAR(50) NOT NULL UNIQUE,
+      vehicle_type VARCHAR(50) DEFAULT 'Lorry',
+      model_name VARCHAR(100) NULL,
+      capacity VARCHAR(50) DEFAULT '2.5 Ton',
+      driver_name VARCHAR(100) NULL,
+      driver_phone VARCHAR(20) NULL,
+      owner_name VARCHAR(100) NULL,
+      ownership_type ENUM('OWN', 'ATTACHED', 'MARKET') DEFAULT 'OWN',
+      assigned_route VARCHAR(100) DEFAULT 'Karaikal - Pondicherry',
+      rc_number VARCHAR(50) NULL,
+      insurance_expiry DATE NULL,
+      fitness_expiry DATE NULL,
+      status ENUM('active', 'in_transit', 'maintenance', 'inactive') DEFAULT 'active',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
   // 4. Orders table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS orders (
@@ -66,7 +88,9 @@ async function initializeDatabase() {
       from_station VARCHAR(100) NOT NULL,
       to_station VARCHAR(100) NOT NULL,
       pieces INT DEFAULT 1,
+      rate_per_piece DECIMAL(10,2) DEFAULT 0.00,
       weight_kg DECIMAL(10,2) DEFAULT 0.00,
+      box_details TEXT NULL,
       description VARCHAR(255) DEFAULT 'Goods',
       payment_mode ENUM('PAID', 'TO_PAY', 'CREDIT') DEFAULT 'TO_PAY',
       payment_status ENUM('PAID', 'UNPAID', 'PARTIALLY_PAID') DEFAULT 'UNPAID',
@@ -77,6 +101,8 @@ async function initializeDatabase() {
       amount_paid DECIMAL(10,2) NOT NULL DEFAULT 0.00,
       delivery_status ENUM('BOOKED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED') DEFAULT 'BOOKED',
       driver_id INT NULL,
+      vehicle_id INT NULL,
+      vehicle_no VARCHAR(50) NULL,
       delivery_date DATETIME NULL,
       remarks TEXT,
       created_by VARCHAR(50) DEFAULT 'Admin',
@@ -85,6 +111,26 @@ async function initializeDatabase() {
       FOREIGN KEY (driver_id) REFERENCES drivers(id) ON DELETE SET NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
+
+  // Ensure orders table has vehicle, rate_per_piece, and box_details columns
+  try {
+    const [cols] = await pool.query('SHOW COLUMNS FROM orders');
+    const existingCols = cols.map(c => c.Field);
+    if (!existingCols.includes('vehicle_id')) {
+      await pool.query('ALTER TABLE orders ADD COLUMN vehicle_id INT NULL AFTER driver_id');
+    }
+    if (!existingCols.includes('vehicle_no')) {
+      await pool.query('ALTER TABLE orders ADD COLUMN vehicle_no VARCHAR(50) NULL AFTER vehicle_id');
+    }
+    if (!existingCols.includes('rate_per_piece')) {
+      await pool.query('ALTER TABLE orders ADD COLUMN rate_per_piece DECIMAL(10,2) DEFAULT 0.00 AFTER pieces');
+    }
+    if (!existingCols.includes('box_details')) {
+      await pool.query('ALTER TABLE orders ADD COLUMN box_details TEXT NULL AFTER weight_kg');
+    }
+  } catch (err) {
+    console.warn('Note on orders columns check:', err.message);
+  }
 
   // 5. Tracking history table
   await pool.query(`
@@ -114,7 +160,59 @@ async function initializeDatabase() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
 
-  console.log('✅ All 6 database tables created successfully!');
+  console.log('✅ All 7 database tables created / verified successfully!');
+
+  // Seed default fleet vehicles (if not exists)
+  const [existingVehicles] = await pool.query('SELECT COUNT(*) as count FROM vehicles');
+  if (existingVehicles[0].count === 0) {
+    const defaultVehicles = [
+      {
+        vehicle_no: 'PY 02 C 5678',
+        vehicle_type: 'Ashok Leyland Dost',
+        model_name: 'Dost Strong (BS6)',
+        capacity: '2.5 Ton',
+        driver_name: 'Agal',
+        driver_phone: '9876543210',
+        owner_name: 'ES Transporters',
+        ownership_type: 'OWN',
+        assigned_route: 'Karaikal - Pondicherry',
+        status: 'active'
+      },
+      {
+        vehicle_no: 'TN 49 AB 1234',
+        vehicle_type: 'Tata 407 Lorry',
+        model_name: 'Tata 407 Gold SFC',
+        capacity: '4.5 Ton',
+        driver_name: 'Mathavan',
+        driver_phone: '9360427527',
+        owner_name: 'ES Transporters',
+        ownership_type: 'OWN',
+        assigned_route: 'Karaikal - Nagapattinam',
+        status: 'active'
+      },
+      {
+        vehicle_no: 'TN 51 Q 9081',
+        vehicle_type: 'Eicher 14ft Container',
+        model_name: 'Eicher Pro 2049',
+        capacity: '5.0 Ton',
+        driver_name: 'Senthil Kumar',
+        driver_phone: '9655566060',
+        owner_name: 'Attached Partner',
+        ownership_type: 'ATTACHED',
+        assigned_route: 'Pondicherry - Cuddalore',
+        status: 'active'
+      }
+    ];
+
+    for (const v of defaultVehicles) {
+      await pool.query(
+        `INSERT INTO vehicles (vehicle_no, vehicle_type, model_name, capacity, driver_name, driver_phone, owner_name, ownership_type, assigned_route, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [v.vehicle_no, v.vehicle_type, v.model_name, v.capacity, v.driver_name, v.driver_phone, v.owner_name, v.ownership_type, v.assigned_route, v.status]
+      );
+    }
+    console.log('🚛 Default fleet vehicles registered successfully!');
+  }
 
   // Seed default Admin login account only (if not exists)
   const [existingUser] = await pool.query('SELECT id FROM users WHERE username = ?', ['admin']);

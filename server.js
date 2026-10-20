@@ -8,6 +8,7 @@ const pool = require('./config/db');
 const initializeDatabase = require('./database/init_db');
 const authRoutes = require('./routes/authRoutes');
 const driverRoutes = require('./routes/driverRoutes');
+const vehicleRoutes = require('./routes/vehicleRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const publicRoutes = require('./routes/publicRoutes');
@@ -32,6 +33,7 @@ if (fs.existsSync(staticPath)) {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/drivers', driverRoutes);
+app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/public', publicRoutes);
