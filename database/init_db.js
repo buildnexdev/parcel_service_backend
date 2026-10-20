@@ -195,15 +195,15 @@ async function initializeDatabase() {
   if (existingBranches[0].count === 0) {
     const branchesData = [
       { name: 'Karaikal', code: 'KL', address: 'No.18, Sastha Nagar, Near Radio Station, Karaikal - 609 602 (Church St Reg: 32, Church St)', phone: '93604 27527 / 96555 66060', is_head_office: 1, is_branch_office: 0 },
-      { name: 'Pondicherry', code: 'PD', address: 'No.9, Throwpathi Amman Kovil Street, Arumathapuram, Puducherry - 605 110', phone: '94424 85296 / 93604 27527', is_head_office: 0, is_branch_office: 1 },
+      { name: 'Pondicherry', code: 'PD', address: 'No.9, Throwpathi Amman Kovil Street, Arumathapuram, Puducherry - 605 110', phone: '+91 94424 85296', is_head_office: 0, is_branch_office: 1 },
       { name: 'Cuddalore', code: 'CUD', address: 'Bus Stand Road / Main Bazaar, Cuddalore', phone: '90476 36351', is_head_office: 0, is_branch_office: 0 },
       { name: 'Chidambaram', code: 'CDM', address: 'West Car Street / Bazaar Area, Chidambaram', phone: '96555 66060', is_head_office: 0, is_branch_office: 0 },
       { name: 'Parangipettai', code: 'PGP', address: 'Main Road, Parangipettai (Porto Novo)', phone: '93604 27527', is_head_office: 0, is_branch_office: 0 },
-      { name: 'Sirkali', code: 'SRK', address: 'Old Bus Stand Road, Sirkazhi', phone: '94424 85296', is_head_office: 0, is_branch_office: 0 },
+      { name: 'Sirkali', code: 'SRK', address: 'Old Bus Stand Road, Sirkazhi', phone: '93604 27527', is_head_office: 0, is_branch_office: 0 },
       { name: 'Mayiladuthurai', code: 'MYL', address: 'Near Railway Junction Road, Mayiladuthurai', phone: '96555 66060', is_head_office: 0, is_branch_office: 0 },
       { name: 'Nagore', code: 'NGR', address: 'Dargah Main Road, Nagore', phone: '90476 36351', is_head_office: 0, is_branch_office: 0 },
       { name: 'Nagapattinam', code: 'NGP', address: 'Public Office Road, Nagapattinam', phone: '93604 27527', is_head_office: 0, is_branch_office: 0 },
-      { name: 'Thiruvarur', code: 'TVR', address: 'South Street / New Bus Stand, Thiruvarur', phone: '94424 85296', is_head_office: 0, is_branch_office: 0 },
+      { name: 'Thiruvarur', code: 'TVR', address: 'South Street / New Bus Stand, Thiruvarur', phone: '93604 27527', is_head_office: 0, is_branch_office: 0 },
       { name: 'Thiruthuraipoondi', code: 'TTP', address: 'Katchery Street, Thiruthuraipoondi', phone: '96555 66060', is_head_office: 0, is_branch_office: 0 },
       { name: 'Vedaranyam', code: 'VDM', address: 'Salt Road / Bus Stand, Vedaranyam', phone: '90476 36351', is_head_office: 0, is_branch_office: 0 }
     ];
