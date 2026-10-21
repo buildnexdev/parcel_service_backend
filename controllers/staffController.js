@@ -39,7 +39,7 @@ exports.getStaff = async (req, res) => {
       params.push(term, term, term, term, term, term);
     }
 
-    query += ` ORDER BY FIELD(role, 'admin', 'staff'), designation = 'Branch Incharge' DESC, id ASC`;
+    query += ` ORDER BY FIELD(role, 'admin', 'staff'), FIELD(designation, 'Proprietor', 'Partner', 'Branch Incharge') DESC, id ASC`;
 
     const [staff] = await pool.query(query, params);
 

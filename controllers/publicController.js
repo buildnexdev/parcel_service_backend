@@ -71,11 +71,16 @@ exports.getCompanyInfo = async (req, res) => {
       tradeName: 'ES TRANSPORTERS',
       brandName: 'IGR QUICK PARCEL SERVICE',
       proprietor: 'MATHAVAN',
+      partner: 'K. SELVAGANABATHY',
       gstin: '34BJCPM0785J1Z3',
       headOffice: {
         title: 'Head Office - Karaikal',
         address: 'No. 18, Sastha Nagar, Near Radio Station, Karaikal - 609 602 (Church St Reg: 32, Church Street)',
-        phones: ['93604 27527', '96555 66060']
+        phones: ['93604 27527', '96555 66060'],
+        contacts: [
+          { name: 'Mathavan', designation: 'Proprietor', phone: '93604 27527' },
+          { name: 'K. Selvaganabathy', designation: 'Partner', phone: '96555 66060' }
+        ]
       },
       branchOffice: {
         title: 'Branch Office - Pondicherry',

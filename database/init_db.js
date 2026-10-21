@@ -178,16 +178,36 @@ async function initializeDatabase() {
 
   console.log('✅ All 7 database tables created / verified successfully!');
 
-  // Seed default Admin login account only (if not exists)
+  // Seed default Admin login account (if not exists)
   const [existingUser] = await pool.query('SELECT id FROM users WHERE username = ?', ['admin']);
   if (existingUser.length === 0) {
     const hashedPassword = await bcrypt.hash('admin123', 10);
     await pool.query(
-      `INSERT INTO users (name, username, email, phone, password, role, branch) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      ['Mathavan (Admin)', 'admin', 'admin@estransporters.com', '9360427527', hashedPassword, 'admin', 'Karaikal']
+      `INSERT INTO users (name, username, email, phone, password, role, designation, branch, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ['Mathavan (Proprietor)', 'admin', 'admin@estransporters.com', '9360427527', hashedPassword, 'admin', 'Proprietor', 'Karaikal', 'active']
     );
     console.log('👤 Initial Admin created: username="admin", password="admin123"');
+  } else {
+    // Ensure designation is Proprietor
+    await pool.query("UPDATE users SET designation = 'Proprietor' WHERE username = 'admin' AND designation = 'Staff'");
+  }
+
+  // Seed Partner account: K. Selvaganabathy (if not exists)
+  const [existingPartner] = await pool.query('SELECT id FROM users WHERE username = ? OR phone = ?', ['selvaganabathy', '9655566060']);
+  if (existingPartner.length === 0) {
+    const partnerPassword = await bcrypt.hash('partner123', 10);
+    await pool.query(
+      `INSERT INTO users (name, username, email, phone, password, role, designation, branch, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ['K. Selvaganabathy (Partner)', 'selvaganabathy', 'selvaganabathy@estransporters.com', '9655566060', partnerPassword, 'admin', 'Partner', 'Karaikal', 'active']
+    );
+    console.log('👤 Partner created: username="selvaganabathy", password="partner123"');
+  } else {
+    await pool.query(
+      "UPDATE users SET name = 'K. Selvaganabathy (Partner)', designation = 'Partner', branch = 'Karaikal', phone = '9655566060' WHERE id = ?",
+      [existingPartner[0].id]
+    );
   }
 
   // Seed the 12 official company network branches (permanent branch list)
