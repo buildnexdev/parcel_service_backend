@@ -349,7 +349,7 @@ exports.createOrder = async (req, res) => {
       unitRate = parseFloat((freight / numPieces).toFixed(2));
     }
 
-    // Process box details (individual box weights)
+    // Process box details (individual box weights and package denominations)
     let parsedBoxDetails = null;
     let totalWeight = parseFloat(weight_kg) || 0;
 
@@ -362,17 +362,39 @@ exports.createOrder = async (req, res) => {
       try {
         const parsed = typeof box_details === 'string' ? JSON.parse(box_details) : box_details;
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const sumWeight = parsed.reduce((acc, b) => acc + (parseFloat(b.weight || b) || 0), 0);
+          const sumWeight = parsed.reduce((acc, b) => {
+            const w = b.total_weight !== undefined && b.total_weight !== ''
+              ? parseFloat(b.total_weight)
+              : (b.weight_per_piece !== undefined && b.weight_per_piece !== ''
+                  ? (parseInt(b.pieces, 10) || 1) * parseFloat(b.weight_per_piece)
+                  : (parseFloat(b.weight || b) || 0));
+            return acc + (isNaN(w) ? 0 : w);
+          }, 0);
           if (sumWeight > 0) {
             totalWeight = parseFloat(sumWeight.toFixed(2));
           }
-          const sumAmount = parsed.reduce((acc, b) => acc + (parseFloat(b.amount) || 0), 0);
+
+          const sumAmount = parsed.reduce((acc, b) => {
+            const a = b.total_amount !== undefined && b.total_amount !== ''
+              ? parseFloat(b.total_amount)
+              : (b.rate_per_piece !== undefined && b.rate_per_piece !== ''
+                  ? (parseInt(b.pieces, 10) || 1) * parseFloat(b.rate_per_piece)
+                  : (parseFloat(b.amount) || 0));
+            return acc + (isNaN(a) ? 0 : a);
+          }, 0);
           if (sumAmount > 0) {
             freight = parseFloat(sumAmount.toFixed(2));
-            unitRate = numPieces > 0 ? parseFloat((freight / numPieces).toFixed(2)) : unitRate;
           }
-          if (parsed.length !== numPieces && parsed.length > 1) {
+
+          const sumPieces = parsed.reduce((acc, b) => acc + (parseInt(b.pieces, 10) || 0), 0);
+          if (sumPieces > 0) {
+            numPieces = sumPieces;
+          } else if (parsed.length !== numPieces && parsed.length > 1) {
             numPieces = parsed.length;
+          }
+
+          if (numPieces > 0 && freight > 0) {
+            unitRate = parseFloat((freight / numPieces).toFixed(2));
           }
         }
       } catch (e) {}
@@ -435,7 +457,7 @@ exports.createOrder = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: `Order LR #${lr_number} created successfully!`,
+      message: `Parcel LR #${lr_number} booked successfully!`,
       order: created[0]
     });
   } catch (err) {
@@ -486,7 +508,7 @@ exports.updatePayment = async (req, res) => {
     const [updated] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
     return res.json({
       success: true,
-      message: `Payment updated for LR #${order.lr_number}: Status is now ${newStatus}!`,
+      message: `Payment updated for Parcel LR #${order.lr_number}: Status is now ${newStatus}!`,
       order: updated[0]
     });
   } catch (err) {
@@ -542,7 +564,7 @@ exports.updateDeliveryStatus = async (req, res) => {
     const [updated] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
     return res.json({
       success: true,
-      message: `Status updated to ${delivery_status} for LR #${order.lr_number}!`,
+      message: `Parcel LR #${order.lr_number} status updated to ${delivery_status}!`,
       order: updated[0]
     });
   } catch (err) {
@@ -682,14 +704,39 @@ exports.updateOrder = async (req, res) => {
       try {
         const parsed = typeof box_details === 'string' ? JSON.parse(box_details) : box_details;
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const sumWeight = parsed.reduce((acc, b) => acc + (parseFloat(b.weight || b) || 0), 0);
+          const sumWeight = parsed.reduce((acc, b) => {
+            const w = b.total_weight !== undefined && b.total_weight !== ''
+              ? parseFloat(b.total_weight)
+              : (b.weight_per_piece !== undefined && b.weight_per_piece !== ''
+                  ? (parseInt(b.pieces, 10) || 1) * parseFloat(b.weight_per_piece)
+                  : (parseFloat(b.weight || b) || 0));
+            return acc + (isNaN(w) ? 0 : w);
+          }, 0);
           if (sumWeight > 0) {
             totalWeight = parseFloat(sumWeight.toFixed(2));
           }
-          const sumAmount = parsed.reduce((acc, b) => acc + (parseFloat(b.amount) || 0), 0);
+
+          const sumAmount = parsed.reduce((acc, b) => {
+            const a = b.total_amount !== undefined && b.total_amount !== ''
+              ? parseFloat(b.total_amount)
+              : (b.rate_per_piece !== undefined && b.rate_per_piece !== ''
+                  ? (parseInt(b.pieces, 10) || 1) * parseFloat(b.rate_per_piece)
+                  : (parseFloat(b.amount) || 0));
+            return acc + (isNaN(a) ? 0 : a);
+          }, 0);
           if (sumAmount > 0) {
             freight = parseFloat(sumAmount.toFixed(2));
-            unitRate = numPieces > 0 ? parseFloat((freight / numPieces).toFixed(2)) : unitRate;
+          }
+
+          const sumPieces = parsed.reduce((acc, b) => acc + (parseInt(b.pieces, 10) || 0), 0);
+          if (sumPieces > 0) {
+            numPieces = sumPieces;
+          } else if (parsed.length !== numPieces && parsed.length > 1) {
+            numPieces = parsed.length;
+          }
+
+          if (numPieces > 0 && freight > 0) {
+            unitRate = parseFloat((freight / numPieces).toFixed(2));
           }
         }
       } catch (e) {}
@@ -809,7 +856,7 @@ exports.updateOrder = async (req, res) => {
 
     return res.json({
       success: true,
-      message: `Order LR #${updatedLr} updated successfully!`,
+      message: `Parcel LR #${updatedLr} updated successfully!`,
       order: updated[0]
     });
   } catch (err) {

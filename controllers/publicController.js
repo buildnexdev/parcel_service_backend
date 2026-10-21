@@ -15,7 +15,7 @@ exports.trackParcel = async (req, res) => {
         o.id, o.lr_number, o.booking_date, o.booking_time, 
         o.sender_name, o.receiver_name, 
         o.from_station, o.to_station, 
-        o.pieces, o.weight_kg, o.description, 
+        o.pieces, o.weight_kg, o.box_details, o.description, 
         o.delivery_status, o.payment_mode, o.payment_status,
         o.delivery_date
        FROM orders o
