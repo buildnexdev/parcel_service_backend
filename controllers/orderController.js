@@ -532,7 +532,7 @@ exports.updateDeliveryStatus = async (req, res) => {
 
     const order = orders[0];
     const isDelivered = delivery_status === 'DELIVERED';
-    const loc = location || (isDelivered ? order.to_station : order.from_station);
+    const loc = location || ((isDelivered || delivery_status === 'UNDELIVERED') ? order.to_station : order.from_station);
 
     let query = `UPDATE orders SET delivery_status = ?`;
     const params = [delivery_status];
