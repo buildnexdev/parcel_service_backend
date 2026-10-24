@@ -34,14 +34,24 @@ exports.getDailyReport = async (req, res) => {
       params.push(date);
     }
 
-    // Payment Status filter (PAID / UNPAID)
-    if (payment_status && payment_status !== 'ALL') {
-      query += ` AND o.payment_status = ?`;
-      params.push(payment_status);
-    }
-
-    // Payment Mode filter (PAID / TO_PAY / CREDIT)
-    if (payment_mode && payment_mode !== 'ALL') {
+    // Payment filter: paid / cash / gpay / bank / unpaid
+    const payFilter = (payment_method || payment_status || '').toUpperCase();
+    if (payFilter && payFilter !== 'ALL') {
+      if (payFilter === 'PAID') {
+        query += ` AND o.payment_status = 'PAID'`;
+      } else if (payFilter === 'UNPAID') {
+        query += ` AND o.payment_status = 'UNPAID'`;
+      } else if (payFilter === 'CASH') {
+        query += ` AND (o.payment_method = 'CASH' OR o.payment_method IS NULL) AND o.payment_status = 'PAID'`;
+      } else if (payFilter === 'GPAY' || payFilter === 'UPI') {
+        query += ` AND (o.payment_method = 'UPI' OR o.payment_method = 'GPAY') AND o.payment_status = 'PAID'`;
+      } else if (payFilter === 'BANK' || payFilter === 'BANK_TRANSFER') {
+        query += ` AND o.payment_method = 'BANK_TRANSFER' AND o.payment_status = 'PAID'`;
+      } else {
+        query += ` AND (o.payment_status = ? OR o.payment_method = ? OR o.payment_mode = ?)`;
+        params.push(payFilter, payFilter, payFilter);
+      }
+    } else if (payment_mode && payment_mode !== 'ALL') {
       query += ` AND o.payment_mode = ?`;
       params.push(payment_mode);
     }
@@ -80,6 +90,9 @@ exports.getDailyReport = async (req, res) => {
     let totalPaid = 0;
     let totalToPay = 0;
     let totalCredit = 0;
+    let totalCash = 0;
+    let totalGPay = 0;
+    let totalBank = 0;
 
     let deliveredCount = 0;
     let inTransitCount = 0;
@@ -92,7 +105,14 @@ exports.getDailyReport = async (req, res) => {
 
       if (r.payment_status === 'PAID') {
         totalPaid += amt;
-      } else if (r.payment_mode === 'TO_PAY') {
+        if (r.payment_method === 'UPI' || r.payment_method === 'GPAY') {
+          totalGPay += amt;
+        } else if (r.payment_method === 'BANK_TRANSFER') {
+          totalBank += amt;
+        } else {
+          totalCash += amt;
+        }
+      } else if (r.payment_mode === 'TO_PAY' || r.payment_status === 'UNPAID') {
         totalToPay += amt;
       } else if (r.payment_mode === 'CREDIT') {
         totalCredit += amt;
@@ -112,6 +132,7 @@ exports.getDailyReport = async (req, res) => {
         startDate: startDate || null,
         endDate: endDate || null,
         payment_status: payment_status || 'ALL',
+        payment_method: payment_method || 'ALL',
         payment_mode: payment_mode || 'ALL',
         delivery_status: delivery_status || 'ALL',
         from_station: from_station || 'ALL',
@@ -125,6 +146,9 @@ exports.getDailyReport = async (req, res) => {
         totalPaid,
         totalToPay,
         totalCredit,
+        totalCash,
+        totalGPay,
+        totalBank,
         deliveredCount,
         inTransitCount,
         bookedCount
