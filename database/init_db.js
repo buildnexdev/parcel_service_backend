@@ -176,7 +176,70 @@ async function initializeDatabase() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
 
-  console.log('✅ All 7 database tables created / verified successfully!');
+  // 7. Daily Expenses table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS daily_expenses (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      expense_date DATE NOT NULL,
+      category VARCHAR(50) NOT NULL,
+      title VARCHAR(150) NOT NULL,
+      amount DECIMAL(10,2) NOT NULL,
+      branch VARCHAR(100) DEFAULT 'Karaikal',
+      payment_mode ENUM('CASH', 'UPI', 'BANK_TRANSFER', 'PETTY_CASH', 'CHEQUE') DEFAULT 'CASH',
+      paid_to VARCHAR(100) NULL,
+      voucher_no VARCHAR(50) NULL,
+      vehicle_id INT NULL,
+      vehicle_no VARCHAR(50) NULL,
+      driver_id INT NULL,
+      driver_name VARCHAR(100) NULL,
+      notes TEXT NULL,
+      created_by VARCHAR(100) DEFAULT 'Admin',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL,
+      FOREIGN KEY (driver_id) REFERENCES drivers(id) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // 8. Staff Attendance table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS staff_attendance (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      attendance_date DATE NOT NULL,
+      user_id INT NOT NULL,
+      status ENUM('PRESENT', 'ABSENT', 'HALF_DAY', 'LEAVE', 'ON_DUTY') DEFAULT 'PRESENT',
+      check_in TIME NULL,
+      check_out TIME NULL,
+      working_hours DECIMAL(4,2) NULL,
+      overtime_hours DECIMAL(4,2) DEFAULT 0.00,
+      branch VARCHAR(100) DEFAULT 'Karaikal',
+      notes VARCHAR(255) NULL,
+      marked_by VARCHAR(100) DEFAULT 'Admin',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_user_date (user_id, attendance_date),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // 9. User Permissions table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_permissions (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT NOT NULL,
+      module VARCHAR(50) NOT NULL,
+      can_view TINYINT(1) DEFAULT 1,
+      can_add TINYINT(1) DEFAULT 0,
+      can_edit TINYINT(1) DEFAULT 0,
+      can_delete TINYINT(1) DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_user_module (user_id, module),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  console.log('✅ All 10 database tables created / verified successfully!');
 
   // Seed default Admin login account (if not exists)
   const [existingUser] = await pool.query('SELECT id FROM users WHERE username = ?', ['admin']);

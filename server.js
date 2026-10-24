@@ -12,6 +12,9 @@ const vehicleRoutes = require('./routes/vehicleRoutes');
 const staffRoutes = require('./routes/staffRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+const expenseRoutes = require('./routes/expenseRoutes');
+const attendanceRoutes = require('./routes/attendanceRoutes');
+const permissionRoutes = require('./routes/permissionRoutes');
 const publicRoutes = require('./routes/publicRoutes');
 
 const app = express();
@@ -38,6 +41,9 @@ app.use('/api/drivers', driverRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/permissions', permissionRoutes);
 app.use('/api/public', publicRoutes);
 
 // Health Check
