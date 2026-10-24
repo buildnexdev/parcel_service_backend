@@ -95,6 +95,7 @@ exports.getDailyReport = async (req, res) => {
     let totalBank = 0;
 
     let deliveredCount = 0;
+    let undeliveredCount = 0;
     let inTransitCount = 0;
     let bookedCount = 0;
 
@@ -121,6 +122,7 @@ exports.getDailyReport = async (req, res) => {
       }
 
       if (r.delivery_status === 'DELIVERED') deliveredCount++;
+      else if (r.delivery_status === 'UNDELIVERED') undeliveredCount++;
       else if (r.delivery_status === 'IN_TRANSIT' || r.delivery_status === 'OUT_FOR_DELIVERY') inTransitCount++;
       else bookedCount++;
     }
@@ -150,6 +152,7 @@ exports.getDailyReport = async (req, res) => {
         totalGPay,
         totalBank,
         deliveredCount,
+        undeliveredCount,
         inTransitCount,
         bookedCount
       },
