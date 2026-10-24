@@ -472,7 +472,7 @@ exports.createOrder = async (req, res) => {
 exports.updatePayment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { payment_status, payment_mode, payment_method, amount_paid, remarks } = req.body;
+    let { payment_status, payment_mode, payment_method, amount_paid, remarks } = req.body;
 
     const [orders] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
     if (orders.length === 0) {
@@ -480,12 +480,20 @@ exports.updatePayment = async (req, res) => {
     }
 
     const order = orders[0];
+    let finalMethod = payment_method || order.payment_method || 'CASH';
+    if (finalMethod === 'GPAY') finalMethod = 'UPI';
+
     const newStatus = payment_status || order.payment_status;
-    const newMode = payment_mode || order.payment_mode;
-    const newMethod = payment_method || order.payment_method;
+    let newMode = payment_mode || order.payment_mode;
+    if (newStatus === 'UNPAID' && (!payment_mode || payment_mode === 'PAID')) {
+      newMode = 'TO_PAY';
+    } else if (newStatus === 'PAID' && (!payment_mode || payment_mode === 'TO_PAY')) {
+      newMode = 'PAID';
+    }
+
     const newAmountPaid = (newStatus === 'PAID') 
-      ? order.total_amount 
-      : (amount_paid !== undefined ? parseFloat(amount_paid) : order.amount_paid);
+      ? (amount_paid !== undefined ? parseFloat(amount_paid) : order.total_amount)
+      : (newStatus === 'UNPAID' ? 0 : (amount_paid !== undefined ? parseFloat(amount_paid) : order.amount_paid));
 
     await pool.query(
       `UPDATE orders 
@@ -495,11 +503,12 @@ exports.updatePayment = async (req, res) => {
            amount_paid = ?,
            remarks = COALESCE(?, remarks)
        WHERE id = ?`,
-      [newStatus, newMode, newMethod, newAmountPaid, remarks, id]
+      [newStatus, newMode, finalMethod, newAmountPaid, remarks, id]
     );
 
     // Also add tracking note for payment update
-    const note = `Payment updated: Status marked as ${newStatus} (${newMode} via ${newMethod}). Amount: ₹${newAmountPaid}`;
+    const displayMethod = finalMethod === 'UPI' ? 'GPay / UPI' : finalMethod;
+    const note = `Payment updated: Marked as ${newStatus} (${newMode} via ${displayMethod}). Amount: ₹${newAmountPaid}`;
     await pool.query(
       `INSERT INTO tracking_history (order_id, status, location, note) VALUES (?, ?, ?, ?)`,
       [id, 'PAYMENT_UPDATE', order.to_station, note]
@@ -523,7 +532,7 @@ exports.updatePayment = async (req, res) => {
 exports.updateDeliveryStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { delivery_status, location, note, driver_id, mark_payment_paid } = req.body;
+    const { delivery_status, location, note, driver_id, mark_payment_paid, payment_choice, payment_method } = req.body;
 
     const [orders] = await pool.query('SELECT * FROM orders WHERE id = ?', [id]);
     if (orders.length === 0) {
@@ -539,8 +548,16 @@ exports.updateDeliveryStatus = async (req, res) => {
 
     if (isDelivered) {
       query += `, delivery_date = NOW()`;
-      if (mark_payment_paid || order.payment_mode === 'TO_PAY') {
-        query += `, payment_status = 'PAID', amount_paid = total_amount`;
+      if (payment_choice === 'CASH') {
+        query += `, payment_status = 'PAID', payment_mode = 'PAID', payment_method = 'CASH', amount_paid = total_amount`;
+      } else if (payment_choice === 'GPAY') {
+        query += `, payment_status = 'PAID', payment_mode = 'PAID', payment_method = 'UPI', amount_paid = total_amount`;
+      } else if (payment_choice === 'UNPAID') {
+        query += `, payment_status = 'UNPAID', payment_mode = 'TO_PAY', amount_paid = 0`;
+      } else if (mark_payment_paid) {
+        let method = (payment_method === 'GPAY' || payment_method === 'UPI') ? 'UPI' : 'CASH';
+        query += `, payment_status = 'PAID', payment_mode = 'PAID', payment_method = ?, amount_paid = total_amount`;
+        params.push(method);
       }
     }
 
@@ -555,7 +572,15 @@ exports.updateDeliveryStatus = async (req, res) => {
     await pool.query(query, params);
 
     // Log checkpoint in tracking_history
-    const trackNote = note || `Status updated to ${delivery_status} at ${loc}.`;
+    let paymentNote = '';
+    if (isDelivered) {
+      if (payment_choice === 'CASH') paymentNote = ' [Settled in Cash]';
+      else if (payment_choice === 'GPAY') paymentNote = ' [Settled via GPay (UPI)]';
+      else if (payment_choice === 'UNPAID') paymentNote = ' [Payment: UNPAID / Pending]';
+      else if (mark_payment_paid) paymentNote = ` [Payment Collected: ₹${order.total_amount}]`;
+    }
+
+    const trackNote = (note || `Status updated to ${delivery_status} at ${loc}.`) + paymentNote;
     await pool.query(
       `INSERT INTO tracking_history (order_id, status, location, note) VALUES (?, ?, ?, ?)`,
       [id, delivery_status, loc, trackNote]
