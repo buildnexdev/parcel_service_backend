@@ -9,9 +9,17 @@ exports.login = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide username and password' });
     }
 
+    const identifier = username.trim();
+    const phoneDigits = identifier.replace(/\D/g, '');
+
     const [users] = await pool.query(
-      'SELECT * FROM users WHERE username = ? OR email = ? LIMIT 1',
-      [username.trim(), username.trim()]
+      `SELECT * FROM users 
+       WHERE username = ? 
+          OR email = ? 
+          OR phone = ? 
+          OR (LENGTH(?) >= 10 AND REPLACE(phone, ' ', '') = ?)
+       LIMIT 1`,
+      [identifier, identifier, identifier, phoneDigits, phoneDigits]
     );
 
     if (users.length === 0) {

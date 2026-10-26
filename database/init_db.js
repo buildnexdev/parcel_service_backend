@@ -242,18 +242,21 @@ async function initializeDatabase() {
   console.log('✅ All 10 database tables created / verified successfully!');
 
   // Seed default Admin login account (if not exists)
-  const [existingUser] = await pool.query('SELECT id FROM users WHERE username = ?', ['admin']);
+  const [existingUser] = await pool.query('SELECT id FROM users WHERE username = ? OR phone = ?', ['9360427527', '9360427527']);
+  const hashedPassword = await bcrypt.hash('password@123', 10);
   if (existingUser.length === 0) {
-    const hashedPassword = await bcrypt.hash('admin123', 10);
     await pool.query(
       `INSERT INTO users (name, username, email, phone, password, role, designation, branch, status) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      ['Mathavan (Proprietor)', 'admin', 'admin@estransporters.com', '9360427527', hashedPassword, 'admin', 'Proprietor', 'Karaikal', 'active']
+      ['Madhavan (Proprietor)', '9360427527', 'admin@estransporters.com', '9360427527', hashedPassword, 'admin', 'Proprietor', 'Karaikal', 'active']
     );
-    console.log('👤 Initial Admin created: username="admin", password="admin123"');
+    console.log('👤 Initial Admin created: mobile/username="9360427527", password="password@123"');
   } else {
-    // Ensure designation is Proprietor
-    await pool.query("UPDATE users SET designation = 'Proprietor' WHERE username = 'admin' AND designation = 'Staff'");
+    // Ensure designation is Proprietor and password updated
+    await pool.query(
+      "UPDATE users SET name = 'Madhavan (Proprietor)', username = '9360427527', phone = '9360427527', password = ?, designation = 'Proprietor', role = 'admin' WHERE id = ?",
+      [hashedPassword, existingUser[0].id]
+    );
   }
 
   // Seed Partner account: K. Selvaganabathy (if not exists)
