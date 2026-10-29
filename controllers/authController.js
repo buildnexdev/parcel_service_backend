@@ -39,7 +39,7 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role, name: user.name, branch: user.branch, designation: user.designation || 'Staff' },
       process.env.JWT_SECRET || 'es_transporters_jwt_secret_2026_super_secure_key',
-      { expiresIn: '7d' }
+      { expiresIn: '24h' }
     );
 
     const safeUser = {
@@ -58,6 +58,7 @@ exports.login = async (req, res) => {
       success: true,
       message: 'Login successful',
       token,
+      expiresIn: 86400, // 24 hours in seconds
       user: safeUser
     });
   } catch (err) {
